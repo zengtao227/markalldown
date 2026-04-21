@@ -21,5 +21,18 @@ Current design:
 Run:
 
 ```bash
-python3 tools/doc_pack/pack.py /path/to/file.pdf --goal "Summarize message flow and call out contradictions."
+./.venv/bin/python tools/doc_pack/pack.py /path/to/file.pdf --goal "Summarize message flow and call out contradictions."
+```
+
+Setup:
+
+```bash
+python3 -m venv .venv
+./.venv/bin/pip install -r tools/doc_pack/requirements.txt
+```
+
+Claude Code:
+
+```bash
+/doc-pack "/path/to/file.pdf" --goal "Summarize the document and flag anything uncertain."
 ```

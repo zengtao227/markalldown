@@ -52,13 +52,16 @@ def _build_primary_pack(options: PackOptions) -> PackResult:
 
     page_texts: dict[int, str] = {}
     warnings: list[str] = []
+    ocr_used_pages: list[int] = []
     extraction_mode = "pymupdf4llm" if pymupdf4llm is not None else "pymupdf-blocks"
 
     for page_number in selected_pages:
-        text, page_warning = _extract_page_markdown(document, page_number, options)
+        text, page_warning, used_ocr = _extract_page_markdown(document, page_number)
         page_texts[page_number] = text.strip()
         if page_warning:
             warnings.append(page_warning)
+        if used_ocr:
+            ocr_used_pages.append(page_number)
 
     page_texts = drop_repeated_edge_lines(page_texts)
 
@@ -74,6 +77,7 @@ def _build_primary_pack(options: PackOptions) -> PackResult:
                 "page": page_number,
                 "characters": quality["characters"],
                 "suspicious_ratio": quality["suspicious_ratio"],
+                "ocr_used": page_number in ocr_used_pages,
             }
         )
         if quality["needs_review"]:
@@ -117,40 +121,49 @@ def _build_primary_pack(options: PackOptions) -> PackResult:
         metadata={
             "page_count": total_pages,
             "extraction_mode": extraction_mode,
+            "ocr_used_pages": ocr_used_pages,
             "page_stats": page_stats,
         },
     )
 
 
-def _extract_page_markdown(document: object, page_number: int, options: PackOptions) -> tuple[str, str | None]:
+def _extract_page_markdown(document: object, page_number: int) -> tuple[str, str | None, bool]:
+    page = document.load_page(page_number - 1)
+    used_ocr = _page_needs_ocr(page)
     if pymupdf4llm is not None:
         try:
-            markdown = _extract_with_pymupdf4llm(document, page_number, options)
+            markdown = _extract_with_pymupdf4llm(document, page_number, used_ocr)
         except ProcessingError as exc:
             markdown = ""
             warning = str(exc)
         else:
             warning = None
         if markdown:
-            return markdown, warning
+            return markdown, warning, used_ocr
 
-    page = document.load_page(page_number - 1)
     blocks = iter_body_text_blocks(page)
-    return "\n\n".join(blocks), "Used PyMuPDF block fallback for page %s." % page_number if pymupdf4llm is not None else None
+    return (
+        "\n\n".join(blocks),
+        "Used PyMuPDF block fallback for page %s." % page_number if pymupdf4llm is not None else None,
+        False,
+    )
 
 
-def _extract_with_pymupdf4llm(document: object, page_number: int, options: PackOptions) -> str:
+def _extract_with_pymupdf4llm(document: object, page_number: int, use_ocr: bool) -> str:
     if fitz is None or pymupdf4llm is None:
         return ""
 
-    temp_pdf = options.work_dir / f"page_{page_number:03d}.pdf"
-    temp_doc = fitz.open()
-    temp_doc.insert_pdf(document, from_page=page_number - 1, to_page=page_number - 1)
-    temp_doc.save(temp_pdf)
-    temp_doc.close()
-
     try:
-        extracted = pymupdf4llm.to_markdown(str(temp_pdf))
+        extracted = pymupdf4llm.to_markdown(
+            document,
+            pages=[page_number - 1],
+            page_separators=False,
+            show_progress=False,
+            header=False,
+            footer=False,
+            use_ocr=use_ocr,
+            force_ocr=False,
+        )
     except Exception as exc:  # pragma: no cover - runtime integration guard
         raise ProcessingError(f"PyMuPDF4LLM failed on page {page_number}: {exc}") from exc
 
@@ -174,6 +187,12 @@ def _page_quality(text: str) -> dict[str, float | int | bool]:
         "suspicious_ratio": round(ratio, 4),
         "needs_review": needs_review,
     }
+
+
+def _page_needs_ocr(page: object) -> bool:
+    text = page.get_text("text", sort=True)
+    compact = "".join(character for character in text if not character.isspace())
+    return len(compact) < 40
 
 
 def _export_page_images(

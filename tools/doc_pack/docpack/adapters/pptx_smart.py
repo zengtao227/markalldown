@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 from docpack.models import ImageArtifact, MissingDependencyError, PackOptions, PackResult, ProcessingError
+from docpack.utils import ensure_dir
 
 try:
     from pptx import Presentation
@@ -134,6 +135,7 @@ def _export_slide_images(options: PackOptions, slide_numbers: list[int]) -> list
 
 
 def _convert_pptx_to_pdf(soffice: str, options: PackOptions) -> Path:
+    ensure_dir(options.work_dir)
     subprocess.run(
         [
             soffice,

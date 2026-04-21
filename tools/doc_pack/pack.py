@@ -85,7 +85,6 @@ def build_options(args: argparse.Namespace) -> PackOptions:
     ensure_dir(output_dir)
     ensure_dir(output_dir / "images")
     ensure_dir(output_dir / "tables")
-    ensure_dir(output_dir / ".work")
 
     dpi = args.dpi
     if args.hd and args.dpi == 150:
