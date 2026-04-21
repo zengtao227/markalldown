@@ -32,6 +32,7 @@ def render_prompt(options: PackOptions, result: PackResult, manifest: dict) -> s
         backend=result.backend,
         selected_units=_format_units(result.selected_units),
         content_path="content.md",
+        notebooklm_handoff_path="notebooklm_handoff.md",
         image_lines=image_lines,
         table_lines=table_lines,
         review_units=_format_units(result.needs_review_units) or "None",

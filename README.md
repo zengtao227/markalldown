@@ -17,6 +17,7 @@ Current design:
 - `DOCX / HTML / CSV / ZIP / generic Office` -> `MarkItDown`
 - `XLSX` -> smart CSV-oriented adapter
 - `PPTX` -> text extraction plus optional slide images
+- `NotebookLM` -> optional source-grounded research stage after local pack creation
 
 Run:
 
@@ -36,3 +37,20 @@ Claude Code:
 ```bash
 /doc-pack "/path/to/file.pdf" --goal "Summarize the document and flag anything uncertain."
 ```
+
+Combined workflow:
+
+```bash
+/doc-research "/path/to/file.pdf" --goal "Create a grounded briefing, then return the final answer for execution."
+```
+
+After each pack run, `markalldown` also generates:
+
+- `notebooklm_upload.txt`
+- `notebooklm_handoff.md`
+
+Use those files to bridge the local pack into NotebookLM, then copy NotebookLM outputs back as:
+
+- `notebooklm_briefing.md`
+- `notebooklm_findings.md`
+- `notebooklm_link.txt`

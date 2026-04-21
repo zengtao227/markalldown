@@ -7,8 +7,9 @@
 ## Read Order
 
 1. Read `{content_path}` first.
-2. Inspect the referenced images only when they are relevant.
-3. Inspect referenced tables only when the answer depends on row-level or numeric evidence.
+2. If you are using the combined workflow, read `{notebooklm_handoff_path}` and any returned `notebooklm_*.md` files next.
+3. Inspect the referenced images only when they are relevant.
+4. Inspect referenced tables only when the answer depends on row-level or numeric evidence.
 
 ## Available Artifacts
 

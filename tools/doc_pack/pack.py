@@ -9,6 +9,8 @@ from pathlib import Path
 
 from docpack.adapters import resolve_adapter
 from docpack.models import MissingDependencyError, PackOptions, PackResult, ProcessingError
+from docpack.notebooklm import render_handoff as render_notebooklm_handoff
+from docpack.notebooklm import render_upload_text as render_notebooklm_upload_text
 from docpack.prompting import render_prompt
 from docpack.utils import ensure_dir, parse_page_spec, sha256_file
 
@@ -135,6 +137,15 @@ def build_manifest(options: PackOptions, result: PackResult) -> dict:
             "prompt": "prompt.md",
             "images": [artifact.to_manifest(options.output_dir) for artifact in result.images],
             "tables": [artifact.to_manifest(options.output_dir) for artifact in result.tables],
+            "notebooklm": {
+                "upload": "notebooklm_upload.txt",
+                "handoff": "notebooklm_handoff.md",
+                "expected_returns": [
+                    "notebooklm_briefing.md",
+                    "notebooklm_findings.md",
+                    "notebooklm_link.txt",
+                ],
+            },
         },
     }
 
@@ -142,6 +153,8 @@ def build_manifest(options: PackOptions, result: PackResult) -> dict:
 def write_pack(options: PackOptions, result: PackResult) -> None:
     manifest = build_manifest(options, result)
     prompt_text = render_prompt(options, result, manifest)
+    notebooklm_upload_text = render_notebooklm_upload_text(result)
+    notebooklm_handoff_text = render_notebooklm_handoff(options, result, manifest)
 
     (options.output_dir / "content.md").write_text(result.content_markdown.strip() + "\n", encoding="utf-8")
     (options.output_dir / "manifest.json").write_text(
@@ -149,6 +162,8 @@ def write_pack(options: PackOptions, result: PackResult) -> None:
         encoding="utf-8",
     )
     (options.output_dir / "prompt.md").write_text(prompt_text, encoding="utf-8")
+    (options.output_dir / "notebooklm_upload.txt").write_text(notebooklm_upload_text, encoding="utf-8")
+    (options.output_dir / "notebooklm_handoff.md").write_text(notebooklm_handoff_text, encoding="utf-8")
 
 
 def print_summary(options: PackOptions, result: PackResult) -> None:

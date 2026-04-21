@@ -8,7 +8,8 @@ After the command succeeds:
 
 1. Read `manifest.json`.
 2. Read `content.md`.
-3. Inspect only the images or tables referenced in the manifest when the question requires them.
+3. Read `notebooklm_handoff.md` if the task may need NotebookLM.
+4. Inspect only the images or tables referenced in the manifest when the question requires them.
 
 Example:
 
