@@ -1,39 +1,106 @@
 # markalldown + NotebookLM + Claude/Codex SOP
 
-## 1. Purpose
+## 1. Core Model
 
-This SOP defines a standard document workflow for research and analysis:
+This workflow has three layers:
 
-1. `markalldown` cleans and normalizes raw sources into a local `*_llm_pack/`.
-2. `NotebookLM` handles multi-source exploration, briefings, and source-grounded synthesis.
-3. `Claude` or `Codex` performs the final task using the local pack plus any NotebookLM return artifacts.
+1. `markalldown` is the local control plane.
+   It creates a reproducible `*_llm_pack/`, records what was processed, and preserves local evidence for
+   exact review.
+2. `NotebookLM` is the source-grounded research plane.
+   It is where large, supported source sets are explored, compared, and summarized.
+3. `Claude` or `Codex` is the final execution plane.
+   The agent uses the local pack plus any NotebookLM return artifacts to produce the final answer or work
+   product.
 
-This design exists because NotebookLM is useful for source-grounded research, but it is not the same
-thing as a local, automatable document pre-processor.
+The important boundary is this:
 
-## 2. Decision Tree
+- `markalldown` reduces local input noise and preserves deterministic artifacts.
+- `NotebookLM` reduces repeated research-token waste across many supported sources.
 
-### Local-only path
+## 2. Stay Local By Default
 
 Use only `markalldown -> Claude/Codex` when:
 
-- the task is a single-document extraction or review
-- the user needs deterministic output
-- the document is too sensitive for NotebookLM
-- exact spreadsheet row handling matters more than research synthesis
+- the task is a single-document extraction, review, or implementation task
+- the answer must stay deterministic and page-accurate
+- the document is too sensitive to upload to NotebookLM
+- the work depends on exact spreadsheet rows, formulas, or cell-level reasoning
+- the user wants direct local processing only
 
-### Combined path
+Typical examples:
 
-Use `markalldown -> NotebookLM -> Claude/Codex` when:
+- `Summarize the key clauses in this one contract.`
+- `Check pages 8-12 for contradictions.`
+- `Find anomalies in this CSV/XLSX and show the exact rows.`
 
-- the task spans many documents
-- the user wants a briefing, study guide, or thematic synthesis
-- contradiction detection across sources matters
-- charts, figures, or diagrams need source-grounded question answering
+## 3. Upgrade To NotebookLM
 
-## 3. Standard Operating Procedure
+Upgrade to the combined workflow when any of these are true:
 
-### Step 1. Local intake with markalldown
+- there are `4+` related documents or a clearly large source set
+- you expect `3+` rounds of questions against the same source set
+- the task is about `comparison`, `briefing`, `theme extraction`, `consensus`, `contradictions`, or
+  `research gaps`
+- the main work is reading and cross-referencing a corpus, not extracting one exact answer from one file
+- the notebook should become a reusable research surface for the same project or topic
+
+Typical examples:
+
+- `Compare 12 proposals and tell me the main differences and hidden conflicts.`
+- `Create a briefing across these reports and list unresolved questions.`
+- `Read this literature set and identify consensus, disagreement, and next steps.`
+
+## 4. Source Policy
+
+When NotebookLM is active, the default rule is:
+
+- upload original supported sources directly into NotebookLM
+- keep the local pack as the control plane and final verification layer
+
+This is the preferred behavior because NotebookLM already supports many source types directly on desktop,
+including `docx`, `md`, `txt`, `pdf`, `csv`, `pptx`, `images`, `audio`, `web URLs`, and `epub`.
+
+Use local pack outputs such as `notebooklm_upload.txt` only when:
+
+- the original local format is not a preferred NotebookLM upload type
+- you need a cleaned or stripped text-only fallback
+- you want to supplement the original source with a normalized text view
+
+Keep these tasks local even in the combined workflow:
+
+- exact row-level spreadsheet reasoning
+- page-perfect image review
+- final implementation decisions that require deterministic local evidence
+
+## 5. Current Connection Model
+
+There is no official NotebookLM API wired into this repository today.
+
+That means Claude/Codex do not directly call NotebookLM as a tool in the current implementation. The
+current stable connection is a `handoff packet`:
+
+- `notebooklm_handoff.md` carries the notebook title, research theme, upload strategy, opening prompt, and
+  follow-up prompts
+- the user, or a future automation layer, performs the NotebookLM UI actions
+- NotebookLM outputs are copied back into the local pack for Claude/Codex to consume
+
+Current connection modes:
+
+1. `Manual gateway`:
+   The user opens NotebookLM, uploads sources, pastes the prepared prompts, and saves the results back.
+2. `Shared notebook`:
+   The user keeps a project notebook in NotebookLM and shares or reuses it across research sessions.
+   Claude/Codex still consume the notebook indirectly through exported notes, copied answers, or shared
+   links.
+3. `Browser automation`:
+   Possible in the future, but experimental and not part of the core workflow.
+4. `Official API / MCP adapter`:
+   Preferred future state if Google exposes a stable API.
+
+## 6. Standard Operating Procedure
+
+### Step 1. Create the local control pack
 
 Run:
 
@@ -41,7 +108,7 @@ Run:
 ./.venv/bin/python tools/doc_pack/pack.py "/path/to/source.pdf" --goal "State the actual analysis task."
 ```
 
-This creates:
+This creates a local `*_llm_pack/` with:
 
 - `content.md`
 - `manifest.json`
@@ -51,53 +118,61 @@ This creates:
 - `notebooklm_upload.txt`
 - `notebooklm_handoff.md`
 
-### Step 2. Decide what goes to NotebookLM
+This step does not mean NotebookLM must consume the cleaned markdown. It creates the local audit trail and
+the handoff packet.
 
-#### Send original source when NotebookLM supports it and visual grounding matters
+### Step 2. If NotebookLM is needed, upload original supported sources directly
 
-- original `PDF`
-- website URLs
-- Google Docs / Google Slides if you already work in Google formats
+Preferred NotebookLM inputs:
 
-#### Send markalldown output when the original format is noisy or unsupported
+- the original local source file when its type is supported
+- web URLs when the source is already on the web
+- Google-native sources when the work already lives in Drive
 
-- `DOCX` -> upload `notebooklm_upload.txt`
-- `XLSX` -> upload `notebooklm_upload.txt`; keep detailed CSV work local
-- `PPTX` -> upload `notebooklm_upload.txt`; if the slides are visually important, also convert/export to PDF first
-- OCR-cleaned or boilerplate-stripped material -> upload `notebooklm_upload.txt`
+Use `notebooklm_upload.txt` only as a supplement or fallback.
 
-### Step 3. NotebookLM notebook scope
+Examples:
 
-Use one notebook per project or question set.
+- `PDF`, `DOCX`, `MD`, `TXT`, `CSV`, `PPTX`, `image`, `audio`, and `ePub`:
+  upload the original file to NotebookLM first
+- `XLSX`:
+  keep exact work local; if needed in NotebookLM, export relevant sheets to `CSV` or move them to Google
+  Sheets first
+- noisy OCR or heavily boilerplate-stripped content:
+  the original file can still go to NotebookLM, but `notebooklm_upload.txt` may be added as a fallback view
 
-Do not mix unrelated projects in one notebook. NotebookLM cannot reason across multiple notebooks at the
-same time, so notebook boundaries should follow real project boundaries.
+### Step 3. Use the handoff packet to carry the research theme
 
-### Step 4. NotebookLM prompt sequence
+`notebooklm_handoff.md` is the current interface between the local agent workflow and NotebookLM.
 
-Start with these prompts inside NotebookLM:
+It should tell the NotebookLM operator:
 
-1. `Create a briefing document for this project. Keep it grounded in the sources and cite evidence.`
-2. `List the main claims or findings by source, and highlight any contradictions or unresolved questions.`
-3. `Identify charts, diagrams, or sections that still need direct human review.`
-4. `Summarize what should be handed back to Claude/Codex for final execution.`
+- what notebook to create or reuse
+- what sources to upload
+- what the research theme is
+- what opening prompt to ask first
+- what follow-up prompts to ask next
+- what files should be copied back into the pack
 
-Use follow-up prompts like:
+### Step 4. Run the NotebookLM research stage
 
-- `What is still uncertain?`
-- `Which source sections matter most for implementation?`
-- `Where do the sources disagree?`
-- `What should be verified against the original pages before acting on this?`
+Inside NotebookLM:
+
+1. create or open the notebook
+2. upload the original supported sources
+3. paste the opening prompt from `notebooklm_handoff.md`
+4. ask the follow-up prompts
+5. save or export the resulting notes, findings, or link
 
 ### Step 5. Save NotebookLM outputs back into the pack
 
-After the NotebookLM stage, copy results back into the same `*_llm_pack/` using these filenames:
+Copy results back into the same `*_llm_pack/` using:
 
 - `notebooklm_briefing.md`
 - `notebooklm_findings.md`
-- `notebooklm_link.txt` for a public or shared notebook URL when relevant
+- `notebooklm_link.txt`
 
-This keeps the workflow file-based and makes it usable by both Claude and Codex.
+This keeps the workflow reproducible for both Claude and Codex.
 
 ### Step 6. Final Claude/Codex stage
 
@@ -106,48 +181,44 @@ Final analysis or execution should read in this order:
 1. `manifest.json`
 2. `content.md`
 3. `prompt.md`
-4. `notebooklm_briefing.md` if present
-5. `notebooklm_findings.md` if present
-6. referenced `images/` or `tables/` only when needed
+4. `notebooklm_handoff.md` when NotebookLM was part of the workflow
+5. `notebooklm_briefing.md` if present
+6. `notebooklm_findings.md` if present
+7. referenced `images/` or `tables/` only when needed
 
-The final prompt should clearly say:
+The final prompt should be explicit about:
 
-- what question remains
+- the remaining question
 - whether NotebookLM was used
-- what exact output is needed
-- what uncertainty threshold is acceptable
+- which conclusions came from NotebookLM
+- which points still require local verification
 
-## 4. Tool-Specific Integration
+## 7. Three Disciplines
 
-### Claude Code
+These rules are mandatory when NotebookLM is used:
 
-Claude Code should use repository commands:
+1. `NotebookLM is a read-only research desk.`
+   Do not treat it as the system of record for agent state or hidden reasoning.
+2. `Conclusions must stay grounded in sources.`
+   If a result has no citation or no clear source support, treat it as unverified.
+3. `Final delivery belongs to Claude/Codex.`
+   NotebookLM helps read and synthesize sources; the local agent still produces the final answer or action.
 
-- `/doc-pack` for local pack generation
-- `/doc-research` for the combined workflow
+## 8. Mode Boundaries
 
-NotebookLM itself is not directly automated here through an official API. Claude Code should treat
-NotebookLM as a human-in-the-loop research stage and resume once return artifacts are available locally.
+Two working modes are allowed:
 
-### Codex
+- `Ephemeral research mode`:
+  One pack, one notebook, one question set. This is the default for `markalldown`.
+- `Persistent knowledge base mode`:
+  A long-lived notebook reused across many sessions. This is allowed operationally, but it is not the core
+  responsibility of `markalldown` itself.
 
-Codex should follow `AGENTS.md` in this repository.
+## 9. Future Adapter Boundary
 
-Codex integration is also file-based:
+If Google later provides a stable NotebookLM or Gemini notebooks API, replace the manual gateway with a
+real adapter without changing the high-level workflow:
 
-1. create or read the `*_llm_pack/`
-2. use `notebooklm_handoff.md` when the NotebookLM stage is needed
-3. continue only after `notebooklm_briefing.md` or `notebooklm_findings.md` are available
-
-### Future path
-
-If Google later provides a stable NotebookLM API or a supported automation path, replace the manual
-handoff step with MCP or browser automation. Until then, keep NotebookLM as a bounded research stage,
-not as a hidden dependency.
-
-## 5. Current Product Constraints
-
-- NotebookLM works per notebook and cannot access multiple notebooks simultaneously.
-- Private and public notebook sharing exist, depending on account type and plan.
-- Public sharing is currently restricted for some account types.
-- NotebookLM is strong for source-grounded synthesis, but should not replace local structured artifacts.
+- the local pack remains the control plane
+- NotebookLM remains the research plane
+- the gateway changes from `manual` to `API` or `MCP`

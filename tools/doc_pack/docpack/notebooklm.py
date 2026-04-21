@@ -4,6 +4,32 @@ from pathlib import Path
 
 from docpack.models import PackOptions, PackResult
 
+DIRECT_UPLOAD_EXTENSIONS = {
+    ".avif",
+    ".bmp",
+    ".csv",
+    ".docx",
+    ".epub",
+    ".gif",
+    ".heic",
+    ".heif",
+    ".ico",
+    ".jpe",
+    ".jpeg",
+    ".jpg",
+    ".jp2",
+    ".md",
+    ".mp3",
+    ".pdf",
+    ".png",
+    ".pptx",
+    ".tif",
+    ".tiff",
+    ".txt",
+    ".wav",
+    ".webp",
+}
+
 
 def render_upload_text(result: PackResult) -> str:
     return result.content_markdown.strip() + "\n"
@@ -12,18 +38,33 @@ def render_upload_text(result: PackResult) -> str:
 def render_handoff(options: PackOptions, result: PackResult, manifest: dict) -> str:
     template = _template_path().read_text(encoding="utf-8")
 
-    recommended_sources = ["- Required: `notebooklm_upload.txt`"]
-    if result.document_type == "pdf":
+    recommended_sources = []
+    if _supports_direct_upload(options.source_path):
+        recommended_sources.append(f"- Required: original source `{options.source_path}`")
         recommended_sources.append(
-            f"- Optional but recommended for visual grounding: original source `{options.source_path}`"
+            "- Optional supplement: `notebooklm_upload.txt` only if you want a cleaned text-only fallback view."
         )
+    else:
+        recommended_sources.append(
+            f"- Original local file `{options.source_path.name}` is not a preferred direct NotebookLM upload type in this workflow."
+        )
+        recommended_sources.append("- Required fallback: `notebooklm_upload.txt`")
+        if options.source_path.suffix.lower() == ".xlsx":
+            recommended_sources.append(
+                "- If the spreadsheet needs to live inside NotebookLM, export the relevant sheets to `csv` or move them into Google Sheets first."
+            )
+        if options.source_path.suffix.lower() in {".html", ".htm"}:
+            recommended_sources.append(
+                "- Prefer the public web URL over the local HTML file when the same content is available online."
+            )
+
     if result.images:
         recommended_sources.append(
-            "- If NotebookLM still misses visual details, keep image review local in Claude/Codex using `images/`."
+            "- Keep page-perfect image inspection local in Claude/Codex unless you intentionally add selected images as separate NotebookLM sources."
         )
     if result.tables:
         recommended_sources.append(
-            "- Keep detailed CSV reasoning local. Use NotebookLM for summary-level questions, not row-perfect spreadsheet work."
+            "- Keep detailed CSV reasoning local. Use NotebookLM for synthesis and comparison, not row-perfect spreadsheet work."
         )
 
     warning_lines = "\n".join(f"- {warning}" for warning in result.warnings) or "- None"
@@ -35,13 +76,27 @@ def render_handoff(options: PackOptions, result: PackResult, manifest: dict) -> 
         f"- `{artifact.path.relative_to(options.output_dir)}` ({artifact.rows} rows x {artifact.columns} cols)"
         for artifact in result.tables
     ) or "- None"
+    follow_up_prompts = "\n".join(
+        [
+            f"1. `Answer this task using only the notebook sources: {options.analysis_goal.strip() or 'Summarize the document using only the provided evidence.'}`",
+            "2. `List the main findings by source and identify contradictions or unresolved questions.`",
+            "3. `Identify which pages, charts, sections, or sheets still need direct human review before action.`",
+            "4. `Summarize what should be handed back to Claude/Codex for final execution.`",
+        ]
+    )
 
     return template.format(
         source_name=options.source_path.name,
         source_path=options.source_path,
         backend=result.backend,
         selected_units=_format_units(result.selected_units) or "All selected units in this pack",
+        gateway_mode="manual-notebooklm-gateway",
+        notebook_title=f"{options.source_path.stem} research",
+        research_theme=options.analysis_goal.strip()
+        or "Summarize the document using only the provided evidence.",
         notebooklm_sources="\n".join(recommended_sources),
+        opening_prompt=_opening_prompt(options),
+        follow_up_prompts=follow_up_prompts,
         image_lines=image_lines,
         table_lines=table_lines,
         warning_lines=warning_lines,
@@ -57,3 +112,28 @@ def _format_units(units: list[int]) -> str:
     if not units:
         return ""
     return ", ".join(str(unit) for unit in units)
+
+
+def _supports_direct_upload(source_path: Path) -> bool:
+    return source_path.suffix.lower() in DIRECT_UPLOAD_EXTENSIONS
+
+
+def _opening_prompt(options: PackOptions) -> str:
+    goal = options.analysis_goal.strip() or "Summarize the document using only the provided evidence."
+    return "\n".join(
+        [
+            f"Research theme: {goal}",
+            "",
+            "Rules:",
+            "1. Use only the notebook sources.",
+            "2. Cite evidence for every non-trivial claim.",
+            "3. If evidence is missing, say uncertain.",
+            "4. Do not invent details that are not grounded in the sources.",
+            "",
+            "Return sections:",
+            "## Findings From Sources",
+            "## Analysis Steps",
+            "## Conclusion",
+            "## Gaps Not Covered By Sources",
+        ]
+    )

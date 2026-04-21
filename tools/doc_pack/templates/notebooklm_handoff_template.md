@@ -4,10 +4,33 @@
 **Path**: `{source_path}`
 **Backend**: `{backend}`
 **Selected units**: `{selected_units}`
+**Gateway mode**: `{gateway_mode}`
+**Recommended notebook title**: `{notebook_title}`
+
+## Research Theme
+
+{research_theme}
+
+## Current Connection Rule
+
+- This repository does not use an official NotebookLM API today.
+- Use this file as the handoff packet for the human operator or a future gateway adapter.
+- The current stable path is: upload sources in the NotebookLM UI, ask the prepared prompts, then save the
+  results back into this pack.
 
 ## What To Upload To NotebookLM
 
 {notebooklm_sources}
+
+## Opening Prompt To Paste Into NotebookLM
+
+```text
+{opening_prompt}
+```
+
+## Follow-up Prompts
+
+{follow_up_prompts}
 
 ## Keep Local For Claude/Codex
 
@@ -20,13 +43,6 @@
 ## Quality Warnings
 
 {warning_lines}
-
-## Recommended NotebookLM Prompts
-
-1. `Create a briefing document for this project. Keep it grounded in the sources and cite evidence.`
-2. `List the main findings or claims by source and identify contradictions or unresolved questions.`
-3. `Identify which pages, charts, or sections still need direct human review before action.`
-4. `Summarize what should be handed back to Claude/Codex for final execution.`
 
 ## Return Files
 

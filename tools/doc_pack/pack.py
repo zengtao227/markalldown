@@ -138,6 +138,8 @@ def build_manifest(options: PackOptions, result: PackResult) -> dict:
             "images": [artifact.to_manifest(options.output_dir) for artifact in result.images],
             "tables": [artifact.to_manifest(options.output_dir) for artifact in result.tables],
             "notebooklm": {
+                "preferred_source_mode": "direct-originals-first",
+                "gateway_mode": "manual",
                 "upload": "notebooklm_upload.txt",
                 "handoff": "notebooklm_handoff.md",
                 "expected_returns": [

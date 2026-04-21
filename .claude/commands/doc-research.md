@@ -14,8 +14,12 @@ When the user asks for the full `markalldown + NotebookLM + Claude` workflow, do
 
 3. If `notebooklm_briefing.md` or `notebooklm_findings.md` already exist in the same pack directory, use them.
 
-4. If they do not exist, tell the user exactly which files from `notebooklm_handoff.md` should be uploaded to
-   NotebookLM and ask them to copy the resulting NotebookLM outputs back into the same pack directory using:
+4. If they do not exist, use `notebooklm_handoff.md` as the source-of-truth for the current NotebookLM stage.
+   Tell the user:
+   - which original source files should be uploaded to NotebookLM directly
+   - whether `notebooklm_upload.txt` is only a supplement or a required fallback
+   - what opening prompt and follow-up prompts should be pasted into NotebookLM
+   Then ask them to copy the resulting NotebookLM outputs back into the same pack directory using:
    - `notebooklm_briefing.md`
    - `notebooklm_findings.md`
    - `notebooklm_link.txt` (optional)
@@ -24,4 +28,7 @@ When the user asks for the full `markalldown + NotebookLM + Claude` workflow, do
    - local pack artifacts first
    - NotebookLM return files second
 
-6. Be explicit about which conclusions came directly from local artifacts and which came from NotebookLM.
+6. Be explicit about:
+   - which conclusions came directly from local artifacts
+   - which conclusions came from NotebookLM
+   - which points remain uncertain or still need local verification

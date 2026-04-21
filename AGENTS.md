@@ -1,39 +1,41 @@
 # markalldown Agent Workflow
 
-## Combined Workflow Rule
+## Default Rule
 
-When a user asks for document research, document analysis, or multi-source synthesis, use the combined
-`markalldown + NotebookLM + Claude/Codex` workflow unless the user explicitly says to stay local.
+Stay local by default.
+
+Use only `markalldown -> Claude/Codex` when the task is a single-document extraction, a deterministic
+review, a sensitive local-only workflow, or exact spreadsheet reasoning.
+
+## Upgrade To NotebookLM
+
+Upgrade to the combined workflow when any of these are true:
+
+- there are many related sources or a clearly large corpus
+- the user wants comparison, contradiction checking, synthesis, briefing, or theme extraction
+- the same source set will be queried repeatedly
+- the task is more about reading a corpus than extracting one exact answer from one file
 
 ## Standard Flow
 
 1. Run `tools/doc_pack/pack.py` to create a `*_llm_pack/` directory.
 2. Read `manifest.json`, `content.md`, and `prompt.md`.
-3. If the task is multi-document research, contradiction checking, theme extraction, or briefing creation,
-   also read `notebooklm_handoff.md` and use the NotebookLM stage.
-4. NotebookLM integration in this repository is file-based. There is no official NotebookLM API wired into
-   this repo today.
-5. After the NotebookLM stage, look for these optional return files in the same pack directory:
+3. If the NotebookLM stage is needed, read `notebooklm_handoff.md`.
+4. NotebookLM integration in this repository is currently a handoff workflow. There is no official
+   NotebookLM API wired into this repo today.
+5. When NotebookLM is active, upload original supported sources there first. Treat `notebooklm_upload.txt`
+   as a supplement or fallback, not the default source.
+6. After the NotebookLM stage, look for these optional return files in the same pack directory:
    - `notebooklm_briefing.md`
    - `notebooklm_findings.md`
    - `notebooklm_link.txt`
-6. Final analysis should be grounded in local pack artifacts first, then NotebookLM return artifacts if
-   they exist.
+7. Final analysis should distinguish:
+   - what came from local pack artifacts
+   - what came from NotebookLM
+   - what remains unverified
 
-## Skip NotebookLM
+## NotebookLM Disciplines
 
-Skip the NotebookLM stage when:
-
-- the task is deterministic extraction from a single document
-- the user only wants local processing
-- the document is highly sensitive and should not leave the local workflow
-- the answer depends on exact row-level spreadsheet details better handled from local CSV artifacts
-
-## Use NotebookLM
-
-Prefer NotebookLM when:
-
-- there are many related documents
-- the user wants a briefing or study-guide style synthesis
-- the task depends on comparing claims across sources
-- the source contains charts, diagrams, or complex visual references that benefit from source-grounded QA
+- NotebookLM is a read-only research desk, not the system of record for hidden agent state.
+- Conclusions from NotebookLM should stay source-grounded.
+- Final delivery still belongs to Claude/Codex using local artifacts plus NotebookLM return files.
