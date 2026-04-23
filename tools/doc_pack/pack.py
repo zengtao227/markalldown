@@ -174,9 +174,14 @@ def write_pack(options: PackOptions, result: PackResult) -> None:
     (options.output_dir / "notebooklm_upload.txt").write_text(notebooklm_upload_text, encoding="utf-8")
     (options.output_dir / "notebooklm_handoff.md").write_text(notebooklm_handoff_text, encoding="utf-8")
     if options.notebook_url:
-        (options.output_dir / "notebooklm_link.txt").write_text(
-            options.notebook_url.strip() + "\n", encoding="utf-8"
-        )
+        url = options.notebook_url.strip()
+        if "notebooklm.google.com/notebook/" not in url:
+            print(
+                f"Warning: --notebook-url does not look like a NotebookLM URL "
+                f"(expected 'notebooklm.google.com/notebook/<id>'). Writing anyway.",
+                file=sys.stderr,
+            )
+        (options.output_dir / "notebooklm_link.txt").write_text(url + "\n", encoding="utf-8")
 
 
 def print_summary(options: PackOptions, result: PackResult) -> None:

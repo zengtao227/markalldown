@@ -32,6 +32,9 @@ To register a notebook URL:
 If `notebooklm_link.txt` already exists in this pack, Claude will use that notebook without prompting you
 to create a new one.
 
+For split corpora (multiple sub-notebooks), list one URL per line — lines starting with `#` are comments.
+Claude will use `cross_notebook_query` automatically when multiple IDs are present.
+
 ## What To Upload To NotebookLM
 
 {notebooklm_sources}

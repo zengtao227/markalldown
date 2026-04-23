@@ -24,6 +24,12 @@ Upgrade to the combined workflow when any of these are true:
 4. NotebookLM integration defaults to a file-based handoff workflow. An MCP adapter is also available:
    `pip install notebooklm-mcp-cli` exposes tools including `notebook_query`, `source_add`, and
    `notebook_create`. Register the notebook URL in `notebooklm_link.txt` to link a specific notebook.
+   - Keep `notebooklm-mcp-cli` disabled by default in Claude Code settings. Activate it selectively
+     only when running `doc-research` tasks to avoid spending context on 35 idle tool definitions.
+   - Generative tasks (`studio_create`, `research_start`) are async: call → receive `requestId` →
+     poll status every 30–60 s → fetch result. Do not block the conversation thread waiting inline.
+   - When a corpus is split across multiple sub-notebooks, use `cross_notebook_query` for aggregation.
+     `notebooklm_link.txt` supports one URL per line (lines starting with `#` are comments).
 5. When NotebookLM is active, upload original supported sources there first. Treat `notebooklm_upload.txt`
    as a supplement or fallback, not the default source.
 6. After the NotebookLM stage, look for these optional return files in the same pack directory:

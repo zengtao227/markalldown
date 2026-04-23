@@ -66,7 +66,11 @@ def render_handoff(options: PackOptions, result: PackResult, manifest: dict) -> 
         )
     if result.tables:
         recommended_sources.append(
-            "- Keep detailed CSV reasoning local. Use NotebookLM for synthesis and comparison, not row-perfect spreadsheet work."
+            "- For synthesis tasks: consider uploading the extracted CSV files from `tables/` as supplementary"
+            " sources — Markdown tables are ~28% more retrievable in RAG than embedded PDF cells."
+        )
+        recommended_sources.append(
+            "- For row-level exact reasoning: keep CSV work local in Claude/Codex, not in NotebookLM."
         )
 
     word_count = len(result.content_markdown.split())
@@ -129,15 +133,30 @@ def _supports_direct_upload(source_path: Path) -> bool:
     return source_path.suffix.lower() in DIRECT_UPLOAD_EXTENSIONS
 
 
-def read_notebook_id(pack_dir: Path) -> str | None:
-    """Return the notebook ID from notebooklm_link.txt, or None if not registered."""
+def read_all_notebook_ids(pack_dir: Path) -> list[str]:
+    """Return all notebook IDs from notebooklm_link.txt.
+
+    Supports multi-notebook splits: one URL per line, lines starting with # are comments.
+    Use this when a corpus was split across thematic sub-notebooks.
+    """
     link_file = pack_dir / "notebooklm_link.txt"
     if not link_file.exists():
-        return None
-    url = link_file.read_text(encoding="utf-8").strip()
-    if not url:
-        return None
-    return url.rstrip("/").split("/")[-1]
+        return []
+    ids = []
+    for line in link_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        notebook_id = line.rstrip("/").split("/")[-1]
+        if notebook_id:
+            ids.append(notebook_id)
+    return ids
+
+
+def read_notebook_id(pack_dir: Path) -> str | None:
+    """Return the first notebook ID from notebooklm_link.txt, or None if not registered."""
+    ids = read_all_notebook_ids(pack_dir)
+    return ids[0] if ids else None
 
 
 def _opening_prompt(options: PackOptions) -> str:
@@ -151,6 +170,8 @@ def _opening_prompt(options: PackOptions) -> str:
             "2. Cite evidence for every non-trivial claim.",
             "3. If evidence is missing, say uncertain.",
             "4. Do not invent details that are not grounded in the sources.",
+            "5. When quoting, use only exact text found in the sources.",
+            "   If a 100% verbatim match cannot be located, write [Quote Not Found] instead of paraphrasing.",
             "",
             "Return sections:",
             "## Findings From Sources",

@@ -75,14 +75,21 @@ Keep these tasks local even in the combined workflow:
 
 ### Source Size Warning
 
-When a single document's `content.md` exceeds approximately 200,000 words, NotebookLM's retrieval
-accuracy can degrade. The model may draw on its training data to fill gaps rather than strictly
-citing the uploaded sources.
+Two independent thresholds can degrade NotebookLM retrieval quality:
 
-The `pack.py` tool emits a warning automatically when this threshold is crossed.
+1. **Word count**: when a single document exceeds ~200,000 words, the vector index begins to flatten
+   and the model may fill gaps with training data rather than source text.
+   `pack.py` warns automatically when this is crossed.
 
-Mitigation: split large corpora into thematic sub-notebooks of 20–30 sources each. This preserves
-per-notebook retrieval precision while still allowing cross-notebook synthesis queries.
+2. **Source file count**: when a notebook accumulates more than ~30 sources (regardless of word count),
+   per-source retrieval density drops. Free plan hard-caps at 50 sources; Pro at 300.
+   Recommended ceiling for reliable retrieval: **20–30 sources per notebook**.
+
+Mitigation for both: split large corpora into thematic sub-notebooks. Use `cross_notebook_query`
+(available in `notebooklm-mcp-cli`) to aggregate results across split notebooks.
+
+When a corpus is split, record all notebook URLs in `notebooklm_link.txt` — one URL per line,
+lines starting with `#` are treated as comments.
 
 ## 5. Current Connection Model
 
