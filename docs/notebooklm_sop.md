@@ -93,43 +93,123 @@ lines starting with `#` are treated as comments.
 
 ## 5. Current Connection Model
 
-There is no official NotebookLM API wired into this repository today.
+There is still no first-party NotebookLM API embedded inside `markalldown` itself.
 
-That means Claude/Codex do not directly call NotebookLM as a tool in the current implementation. The
-current stable connection is a `handoff packet`:
+However, direct automation is available today through `notebooklm-mcp-cli`, which provides both an MCP
+server and the `nlm` CLI. The recommended operating model is:
+
+- install NotebookLM MCP once for `Claude` and `Codex`
+- keep it available globally
+- activate it only for projects that actually need NotebookLM
+- route each project to its own notebook with `notebooklm_link.txt`
+
+The stable connection surface is now:
 
 - `notebooklm_handoff.md` carries the notebook title, research theme, upload strategy, opening prompt, and
   follow-up prompts
-- `notebooklm_link.txt` is the persistent connection bridge — it stores the notebook URL so Claude knows
-  which specific notebook to reference. Register it by passing `--notebook-url <url>` to `pack.py`, or
-  save the URL manually after creating the notebook.
-- the user, or a future automation layer, performs the NotebookLM UI actions
-- NotebookLM outputs are copied back into the local pack for Claude/Codex to consume
+- `notebooklm_link.txt` is the project-specific connection bridge — it stores the notebook URL so
+  Claude/Codex know which notebook to query. Register it by passing `--notebook-url <url>` to `pack.py`,
+  or save the URL manually after creating the notebook.
+- when direct MCP is available, Claude/Codex can query NotebookLM themselves
+- when direct MCP is unavailable, the same pack still supports a manual NotebookLM handoff
 
-Current connection modes:
+Recommended connection modes:
 
-1. `Manual gateway`:
-   The user opens NotebookLM, uploads sources, pastes the prepared prompts, and saves the results back.
+1. `Project-scoped direct MCP`:
+   Claude/Codex have NotebookLM installed globally, but they use it only when the user explicitly asks,
+   provides a notebook URL or ID, or the current project contains a relevant `notebooklm_link.txt`.
 2. `Shared notebook`:
-   The user keeps a project notebook in NotebookLM and shares or reuses it across research sessions.
-   Claude/Codex still consume the notebook indirectly through exported notes, copied answers, or shared
-   links.
-3. `MCP adapter (available now)`:
-   `notebooklm-mcp-cli` is a Python package that exposes 33 MCP tools for Claude/Codex including
-   `notebook_create`, `source_add`, `notebook_query`, `source_get_content`, `notebook_describe`,
-   and `studio_create`.
-   Install: `pip install notebooklm-mcp-cli` (MIT license, v0.5.27 as of April 2026).
-   This is the recommended automation path when manual handoff becomes a bottleneck.
-   Key usage patterns:
-   - `notebook_describe`: returns an AI-generated summary of a notebook's content and keywords —
-     use this to understand each sub-notebook's scope before routing queries in a split corpus.
-   - `source_get_content`: returns raw source text — use this to verify exact quotes before citing
-     them in final output. Write `[Quote Not Found]` if the verbatim match cannot be located.
-   - `cross_notebook_query`: aggregates results across multiple sub-notebooks.
+   The user keeps a project notebook in NotebookLM and reuses it across research sessions. The project
+   points to that notebook through `notebooklm_link.txt`.
+3. `Manual gateway fallback`:
+   The user opens NotebookLM, uploads sources, pastes prepared prompts, and saves results back into the
+   pack when MCP is not available.
 4. `Official API`:
    Preferred long-term state if Google exposes a first-party stable API with auth guarantees.
 
-## 6. Standard Operating Procedure
+Key MCP usage patterns:
+
+- `notebook_describe`: returns an AI-generated summary of a notebook's content and keywords — use this to
+  understand each sub-notebook's scope before routing queries in a split corpus.
+- `source_get_content`: returns raw source text — use this to verify exact quotes before citing them in
+  final output. Write `[Quote Not Found]` if the verbatim match cannot be located.
+- `cross_notebook_query`: aggregates results across multiple sub-notebooks.
+
+Detailed setup and user-facing workflow live in `docs/notebooklm_mcp_usage.md`.
+
+## 6. Claude And Codex Setup
+
+### Step 1. Install and authenticate once
+
+Run:
+
+```bash
+pip install notebooklm-mcp-cli
+nlm login
+```
+
+This authenticates the local `nlm` profile against the Google account that can access the target
+NotebookLM notebooks.
+
+### Step 2. Register NotebookLM MCP in Claude Code
+
+Recommended Claude command:
+
+```bash
+claude mcp add -s user notebooklm "$(which notebooklm-mcp)"
+```
+
+Verification:
+
+```bash
+claude mcp get notebooklm
+```
+
+Expected outcome: `Scope: User config` and `Status: Connected`.
+
+### Step 3. Register NotebookLM MCP in Codex
+
+Recommended Codex command:
+
+```bash
+codex mcp add notebooklm -- "$(which notebooklm-mcp)"
+```
+
+Verification:
+
+```bash
+codex mcp get notebooklm
+```
+
+Expected outcome: the `notebooklm` server is listed as enabled with `transport: stdio`.
+
+### Step 4. Activate NotebookLM only in relevant projects
+
+Preferred triggers:
+
+- the user explicitly asks to use NotebookLM
+- the user provides a notebook URL or notebook ID
+- the project root contains `notebooklm_link.txt`
+- the relevant `*_llm_pack/` directory contains `notebooklm_link.txt`
+
+Recommended link registration:
+
+```bash
+echo "https://notebooklm.google.com/notebook/<id>" > notebooklm_link.txt
+```
+
+Or at pack creation time:
+
+```bash
+./.venv/bin/python tools/doc_pack/pack.py "/path/to/source.pdf" \
+  --goal "State the analysis task." \
+  --notebook-url "https://notebooklm.google.com/notebook/<id>"
+```
+
+When multiple notebooks are needed, put one URL per line in `notebooklm_link.txt`. Lines starting with
+`#` are comments.
+
+## 7. Standard Operating Procedure
 
 ### Step 1. Create the local control pack
 
@@ -187,7 +267,15 @@ It should tell the NotebookLM operator:
 
 ### Step 4. Run the NotebookLM research stage
 
-Inside NotebookLM:
+Preferred direct mode:
+
+1. resolve the notebook from `notebooklm_link.txt`, explicit user input, or the pack metadata
+2. if there are multiple notebooks, call `notebook_describe` first to understand scope
+3. query the notebook directly from Claude/Codex
+4. use `source_get_content` to verify exact quotes, numbers, and contract language when precision matters
+5. if the corpus is split, use `cross_notebook_query` for synthesis
+
+Fallback manual mode inside NotebookLM:
 
 1. create or open the notebook
 2. upload the original supported sources
@@ -224,7 +312,7 @@ The final prompt should be explicit about:
 - which conclusions came from NotebookLM
 - which points still require local verification
 
-## 7. Three Disciplines
+## 8. Three Disciplines
 
 These rules are mandatory when NotebookLM is used:
 
@@ -235,7 +323,7 @@ These rules are mandatory when NotebookLM is used:
 3. `Final delivery belongs to Claude/Codex.`
    NotebookLM helps read and synthesize sources; the local agent still produces the final answer or action.
 
-## 8. Mode Boundaries
+## 9. Mode Boundaries
 
 Two working modes are allowed:
 
@@ -245,7 +333,7 @@ Two working modes are allowed:
   A long-lived notebook reused across many sessions. This is allowed operationally, but it is not the core
   responsibility of `markalldown` itself.
 
-## 9. Future Adapter Boundary
+## 10. Future Adapter Boundary
 
 If Google later provides a stable NotebookLM or Gemini notebooks API, replace the manual gateway with a
 real adapter without changing the high-level workflow:

@@ -21,11 +21,14 @@ Upgrade to the combined workflow when any of these are true:
 1. Run `tools/doc_pack/pack.py` to create a `*_llm_pack/` directory.
 2. Read `manifest.json`, `content.md`, and `prompt.md`.
 3. If the NotebookLM stage is needed, read `notebooklm_handoff.md`.
-4. NotebookLM integration defaults to a file-based handoff workflow. An MCP adapter is also available:
+4. NotebookLM integration supports both direct MCP use and the file-based handoff workflow:
    `pip install notebooklm-mcp-cli` exposes tools including `notebook_query`, `source_add`, and
-   `notebook_create`. Register the notebook URL in `notebooklm_link.txt` to link a specific notebook.
-   - Keep `notebooklm-mcp-cli` disabled by default in Claude Code settings. Activate it selectively
-     only when running `doc-research` tasks to avoid spending context on 35 idle tool definitions.
+   `notebook_create`. The recommended setup is to install NotebookLM MCP globally in Claude/Codex once,
+   then activate it per project by registering the notebook URL in `notebooklm_link.txt`.
+   - Enable NotebookLM only when it is relevant: the user explicitly asks for it, provides a notebook
+     URL or ID, or the current project already contains a relevant `notebooklm_link.txt`.
+   - Prefer `notebooklm_link.txt` at the project root or inside the relevant `*_llm_pack/` directory.
+   - If no notebook link or notebook ID is available, stay local or ask the user which notebook to use.
    - Generative tasks (`studio_create`, `research_start`) are async: call → receive `requestId` →
      poll status every 30–60 s → fetch result. Do not block the conversation thread waiting inline.
    - When a corpus is split across multiple sub-notebooks, use `cross_notebook_query` for aggregation.
