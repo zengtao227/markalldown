@@ -30,6 +30,10 @@ Upgrade to the combined workflow when any of these are true:
      poll status every 30–60 s → fetch result. Do not block the conversation thread waiting inline.
    - When a corpus is split across multiple sub-notebooks, use `cross_notebook_query` for aggregation.
      `notebooklm_link.txt` supports one URL per line (lines starting with `#` are comments).
+   - Quote verification (when MCP is active): use `source_get_content` to confirm exact quotes
+     before citing them in final output. Write `[Quote Not Found]` for any unverifiable quote.
+   - Multi-notebook routing: use `notebook_describe` on each sub-notebook to understand its scope
+     before routing targeted queries; use `cross_notebook_query` for cross-notebook synthesis.
 5. When NotebookLM is active, upload original supported sources there first. Treat `notebooklm_upload.txt`
    as a supplement or fallback, not the default source.
 6. After the NotebookLM stage, look for these optional return files in the same pack directory:

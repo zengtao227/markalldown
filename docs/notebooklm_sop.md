@@ -115,10 +115,17 @@ Current connection modes:
    Claude/Codex still consume the notebook indirectly through exported notes, copied answers, or shared
    links.
 3. `MCP adapter (available now)`:
-   `notebooklm-mcp-cli` is a Python package that exposes 35 MCP tools for Claude/Codex including
-   `notebook_create`, `source_add`, `notebook_query`, `source_get_content`, and `studio_create`.
+   `notebooklm-mcp-cli` is a Python package that exposes 33 MCP tools for Claude/Codex including
+   `notebook_create`, `source_add`, `notebook_query`, `source_get_content`, `notebook_describe`,
+   and `studio_create`.
    Install: `pip install notebooklm-mcp-cli` (MIT license, v0.5.27 as of April 2026).
    This is the recommended automation path when manual handoff becomes a bottleneck.
+   Key usage patterns:
+   - `notebook_describe`: returns an AI-generated summary of a notebook's content and keywords —
+     use this to understand each sub-notebook's scope before routing queries in a split corpus.
+   - `source_get_content`: returns raw source text — use this to verify exact quotes before citing
+     them in final output. Write `[Quote Not Found]` if the verbatim match cannot be located.
+   - `cross_notebook_query`: aggregates results across multiple sub-notebooks.
 4. `Official API`:
    Preferred long-term state if Google exposes a first-party stable API with auth guarantees.
 

@@ -35,7 +35,17 @@ When the user asks for the full `markalldown + NotebookLM + Claude` workflow, do
    - local pack artifacts first
    - NotebookLM return files second
 
-7. Be explicit about:
+7. If `notebooklm-mcp-cli` is active as an MCP server, apply these checks before writing conclusions:
+   - **Quote verification**: call `source_get_content` to confirm any direct quotes before using
+     them in final output. If a verbatim match cannot be located, write `[Quote Not Found]`
+     instead of paraphrasing.
+   - **Multi-notebook routing**: if `notebooklm_link.txt` lists multiple notebook IDs, call
+     `notebook_describe` on each to understand its scope, then route targeted queries to the
+     appropriate sub-notebook. Use `cross_notebook_query` for cross-notebook synthesis.
+   If `notebooklm-mcp-cli` is not active, skip these checks and flag any direct quotes as
+   unverified until locally confirmed in the source files.
+
+8. Be explicit about:
    - which conclusions came directly from local artifacts
    - which conclusions came from NotebookLM
    - which points remain uncertain or still need local verification
