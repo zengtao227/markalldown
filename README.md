@@ -44,6 +44,28 @@ Combined workflow:
 /doc-research "/path/to/file.pdf" --goal "Create a grounded briefing, then return the final answer for execution."
 ```
 
+NotebookLM MCP setup:
+
+```bash
+pip install notebooklm-mcp-cli
+nlm login
+claude mcp add -s user notebooklm "$(which notebooklm-mcp)"
+codex mcp add notebooklm -- "$(which notebooklm-mcp)"
+```
+
+Recommended operating mode:
+
+- keep NotebookLM available globally in Claude/Codex
+- activate it only for projects that actually need it
+- point each relevant project to its notebook with `notebooklm_link.txt`
+- prefer project-root `notebooklm_link.txt` or the relevant `*_llm_pack/notebooklm_link.txt`
+- you can also register the notebook while packing with `--notebook-url <url>`
+
+Detailed setup and Claude usage:
+
+- `docs/notebooklm_mcp_usage.md`
+- `docs/notebooklm_sop.md`
+
 After each pack run, `markalldown` also generates:
 
 - `notebooklm_upload.txt`
