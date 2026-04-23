@@ -70,6 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not fall back to MarkItDown when the primary PDF backend fails.",
     )
+    parser.add_argument(
+        "--notebook-url",
+        default=None,
+        help="NotebookLM notebook URL to register as notebooklm_link.txt in the pack.",
+    )
     return parser
 
 
@@ -110,6 +115,7 @@ def build_options(args: argparse.Namespace) -> PackOptions:
         analysis_goal=args.goal.strip(),
         preview_rows=max(1, args.preview_rows),
         allow_pdf_fallback=not args.disable_pdf_fallback,
+        notebook_url=args.notebook_url,
     )
 
 
@@ -142,6 +148,7 @@ def build_manifest(options: PackOptions, result: PackResult) -> dict:
                 "gateway_mode": "manual",
                 "upload": "notebooklm_upload.txt",
                 "handoff": "notebooklm_handoff.md",
+                "notebook_url": options.notebook_url,
                 "expected_returns": [
                     "notebooklm_briefing.md",
                     "notebooklm_findings.md",
@@ -166,12 +173,18 @@ def write_pack(options: PackOptions, result: PackResult) -> None:
     (options.output_dir / "prompt.md").write_text(prompt_text, encoding="utf-8")
     (options.output_dir / "notebooklm_upload.txt").write_text(notebooklm_upload_text, encoding="utf-8")
     (options.output_dir / "notebooklm_handoff.md").write_text(notebooklm_handoff_text, encoding="utf-8")
+    if options.notebook_url:
+        (options.output_dir / "notebooklm_link.txt").write_text(
+            options.notebook_url.strip() + "\n", encoding="utf-8"
+        )
 
 
 def print_summary(options: PackOptions, result: PackResult) -> None:
     print(f"Pack created: {options.output_dir}")
     print(f"Backend: {result.backend}")
     print(f"Content: {options.output_dir / 'content.md'}")
+    if options.notebook_url:
+        print(f"Notebook: {options.notebook_url}")
     if result.images:
         print(f"Images: {len(result.images)}")
     if result.tables:

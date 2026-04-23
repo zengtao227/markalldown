@@ -73,6 +73,17 @@ Keep these tasks local even in the combined workflow:
 - page-perfect image review
 - final implementation decisions that require deterministic local evidence
 
+### Source Size Warning
+
+When a single document's `content.md` exceeds approximately 200,000 words, NotebookLM's retrieval
+accuracy can degrade. The model may draw on its training data to fill gaps rather than strictly
+citing the uploaded sources.
+
+The `pack.py` tool emits a warning automatically when this threshold is crossed.
+
+Mitigation: split large corpora into thematic sub-notebooks of 20–30 sources each. This preserves
+per-notebook retrieval precision while still allowing cross-notebook synthesis queries.
+
 ## 5. Current Connection Model
 
 There is no official NotebookLM API wired into this repository today.
@@ -82,6 +93,9 @@ current stable connection is a `handoff packet`:
 
 - `notebooklm_handoff.md` carries the notebook title, research theme, upload strategy, opening prompt, and
   follow-up prompts
+- `notebooklm_link.txt` is the persistent connection bridge — it stores the notebook URL so Claude knows
+  which specific notebook to reference. Register it by passing `--notebook-url <url>` to `pack.py`, or
+  save the URL manually after creating the notebook.
 - the user, or a future automation layer, performs the NotebookLM UI actions
 - NotebookLM outputs are copied back into the local pack for Claude/Codex to consume
 
@@ -93,10 +107,13 @@ Current connection modes:
    The user keeps a project notebook in NotebookLM and shares or reuses it across research sessions.
    Claude/Codex still consume the notebook indirectly through exported notes, copied answers, or shared
    links.
-3. `Browser automation`:
-   Possible in the future, but experimental and not part of the core workflow.
-4. `Official API / MCP adapter`:
-   Preferred future state if Google exposes a stable API.
+3. `MCP adapter (available now)`:
+   `notebooklm-mcp-cli` is a Python package that exposes 35 MCP tools for Claude/Codex including
+   `notebook_create`, `source_add`, `notebook_query`, `source_get_content`, and `studio_create`.
+   Install: `pip install notebooklm-mcp-cli` (MIT license, v0.5.27 as of April 2026).
+   This is the recommended automation path when manual handoff becomes a bottleneck.
+4. `Official API`:
+   Preferred long-term state if Google exposes a first-party stable API with auth guarantees.
 
 ## 6. Standard Operating Procedure
 

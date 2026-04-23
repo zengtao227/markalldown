@@ -18,6 +18,20 @@
 - The current stable path is: upload sources in the NotebookLM UI, ask the prepared prompts, then save the
   results back into this pack.
 
+## Notebook Link (Connection Bridge)
+
+`notebooklm_link.txt` is the persistent connection between this pack and a specific NotebookLM notebook.
+Claude reads this file to know which notebook to query in the combined workflow.
+
+To register a notebook URL:
+
+- **At pack creation time**: pass `--notebook-url <url>` to `pack.py` — the file is written automatically.
+- **After the fact**: manually save the URL:
+  `echo "https://notebooklm.google.com/notebook/<id>" > notebooklm_link.txt`
+
+If `notebooklm_link.txt` already exists in this pack, Claude will use that notebook without prompting you
+to create a new one.
+
 ## What To Upload To NotebookLM
 
 {notebooklm_sources}

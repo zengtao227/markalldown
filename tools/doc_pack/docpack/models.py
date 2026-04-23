@@ -71,6 +71,7 @@ class PackOptions:
     analysis_goal: str = ""
     preview_rows: int = 5
     allow_pdf_fallback: bool = True
+    notebook_url: str | None = None
 
 
 @dataclass(slots=True)

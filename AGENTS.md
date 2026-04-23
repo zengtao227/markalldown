@@ -21,8 +21,9 @@ Upgrade to the combined workflow when any of these are true:
 1. Run `tools/doc_pack/pack.py` to create a `*_llm_pack/` directory.
 2. Read `manifest.json`, `content.md`, and `prompt.md`.
 3. If the NotebookLM stage is needed, read `notebooklm_handoff.md`.
-4. NotebookLM integration in this repository is currently a handoff workflow. There is no official
-   NotebookLM API wired into this repo today.
+4. NotebookLM integration defaults to a file-based handoff workflow. An MCP adapter is also available:
+   `pip install notebooklm-mcp-cli` exposes tools including `notebook_query`, `source_add`, and
+   `notebook_create`. Register the notebook URL in `notebooklm_link.txt` to link a specific notebook.
 5. When NotebookLM is active, upload original supported sources there first. Treat `notebooklm_upload.txt`
    as a supplement or fallback, not the default source.
 6. After the NotebookLM stage, look for these optional return files in the same pack directory:

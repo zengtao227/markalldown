@@ -4,6 +4,8 @@ from pathlib import Path
 
 from docpack.models import PackOptions, PackResult
 
+WORD_COUNT_WARNING_THRESHOLD = 200_000
+
 DIRECT_UPLOAD_EXTENSIONS = {
     ".avif",
     ".bmp",
@@ -67,6 +69,15 @@ def render_handoff(options: PackOptions, result: PackResult, manifest: dict) -> 
             "- Keep detailed CSV reasoning local. Use NotebookLM for synthesis and comparison, not row-perfect spreadsheet work."
         )
 
+    word_count = len(result.content_markdown.split())
+    if word_count > WORD_COUNT_WARNING_THRESHOLD:
+        recommended_sources.append(
+            f"⚠️ Large document: {word_count:,} words in content.md. "
+            "NotebookLM retrieval accuracy can degrade above ~200k words. "
+            "Consider splitting into thematic sub-notebooks (20–30 sources each) "
+            "to maintain source-grounded accuracy."
+        )
+
     warning_lines = "\n".join(f"- {warning}" for warning in result.warnings) or "- None"
     image_lines = "\n".join(
         f"- `{artifact.path.relative_to(options.output_dir)}` from unit {artifact.unit}"
@@ -116,6 +127,17 @@ def _format_units(units: list[int]) -> str:
 
 def _supports_direct_upload(source_path: Path) -> bool:
     return source_path.suffix.lower() in DIRECT_UPLOAD_EXTENSIONS
+
+
+def read_notebook_id(pack_dir: Path) -> str | None:
+    """Return the notebook ID from notebooklm_link.txt, or None if not registered."""
+    link_file = pack_dir / "notebooklm_link.txt"
+    if not link_file.exists():
+        return None
+    url = link_file.read_text(encoding="utf-8").strip()
+    if not url:
+        return None
+    return url.rstrip("/").split("/")[-1]
 
 
 def _opening_prompt(options: PackOptions) -> str:
